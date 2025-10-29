@@ -1,0 +1,722 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<section class="page two-col">
+  <div class="chat-panel">
+    <div class="chat-toolbar">
+      <div class="left-tools">
+        <button id="openHistory" class="btn soft"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>History</button>
+        {% if is_admin %}<button id="openRubricTools" class="btn soft"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.6 5.6L3 18v3h3l6.1-6.1a4 4 0 0 0 5.6-5.6z"></path></svg>Rubric tools</button>{% endif %}
+      </div>
+      <div class="right-tools">
+        <button id="toggleRubricPanel" class="btn soft show-on-mobile"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V6a2 2 0 0 1 2-2h12v15.5a1.5 1.5 0 0 1-1.5 1.5H6a2 2 0 0 1-2-2z"></path></svg>Rubric</button>
+        <button id="copyFeedback" class="btn soft"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h-1a2 2 0 0 0-4 0h-1a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path></svg>Copy feedback</button>
+        <button id="exportPdf" class="btn soft"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>Export PDF</button>
+      </div>
+    </div>
+    <div id="chat" class="chat">
+      <div class="msg bot">
+        <div class="avatar">A</div>
+        <div class="bubble">
+          <div class="md">Welcome! Paste technical report text or upload a file, then click Send. I will provide rubric-based feedback.</div>
+        </div>
+      </div>
+    </div>
+
+    <form id="composer" class="composer" method="post" action="/get_feedback" enctype="multipart/form-data">
+      <div class="file-input">
+        <input id="file" class="file real-file" type="file" name="file" accept=".pdf,.docx,.txt" />
+        <label for="file" class="btn soft"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-7.9 7.9a5 5 0 0 1-7.07-7.07l8.49-8.49a3.5 3.5 0 1 1 4.95 4.95L9.88 17.36a2 2 0 1 1-2.83-2.83L15.17 6.4"></path></svg>Choose file</label>
+        <span id="fileName" class="file-name">No file chosen</span>
+      </div>
+      <textarea id="message" name="message" rows="3" placeholder="Write your message here... (or leave empty if uploading a file)"></textarea>
+      <button id="send" type="submit" class="btn primary">Send</button>
+      <div class="compose-hint muted small">Tip: Press Ctrl+Enter to send. Drag & drop a file anywhere to upload.</div>
+    </form>
+  </div>
+
+  <aside id="rubricPanel" class="rubric-panel">
+    <div class="panel-header colorful">
+      <div class="panel-title">Rubric Panel</div>
+      <div class="panel-actions">
+        <input id="rubricSearch" type="text" placeholder="Search rubric..." />
+        <button id="expandAll" class="btn soft"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>Expand all</button>
+        <button id="collapseAll" class="btn soft"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path></svg>Collapse all</button>
+      </div>
+    </div>
+    <div class="panel-total">
+      <div class="total-top">
+        <span class="label">Overall Score</span>
+        <span id="rubricTotalText" class="value">0.0/0.0</span>
+      </div>
+      <div class="meter" aria-hidden="true">
+        <div id="rubricTotalBar" class="fill" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="panel-body scroll">
+      <ul id="rubricList" class="accordion">
+        {% for item in rubric %}
+        <li class="accordion-item" data-name="{{ item.name | lower }}">
+          <details>
+            <summary>{{ item.name }}</summary>
+            {% if item.scoringCriteria %}
+            <ul class="criteria">
+              {% for sc in item.scoringCriteria %}
+              <li><span class="pill" data-pts="{{ sc.points }}">{{ sc.points }}</span> {{ sc.description }}</li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+          </details>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </aside>
+</section>
+
+<!-- Fullscreen drop overlay for drag-and-drop upload -->
+<div id="dropOverlay" class="drop-overlay hidden" aria-hidden="true">Drop file to upload</div>
+
+<!-- History Modal -->
+<div id="historyModal" class="modal hidden" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-header">
+      <h3 class="modal-title">History</h3>
+      <div class="actions">
+        <button id="refreshHistory" class="btn">Refresh</button>
+        <button id="closeHistory" class="btn">Close</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div id="historyList" class="history-list"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop"></div>
+</div>
+
+<!-- Rubric Tools Modal (admin) -->
+<div id="rubricToolsModal" class="modal hidden" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-header">
+      <h3 class="modal-title">Rubric Tools</h3>
+      <div class="actions">
+        <button id="closeRubricTools" class="btn">Close</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      {% if is_admin %}
+      <hr />
+      <div class="muted small" style="margin-bottom:6px;">Extract rubric from syllabus</div>
+      <form id="extractForm" class="extract" method="post" action="/rubric/extract" enctype="multipart/form-data">
+        <div class="file-input">
+          <input id="syllabusFile" class="file real-file" type="file" name="file" accept=".pdf,.docx,.txt" />
+          <label for="syllabusFile" class="btn">Choose file</label>
+          <span id="syllabusFileName" class="file-name">No file selected</span>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <button id="extractBtn" type="submit" class="btn">Extract</button>
+          <button id="loadVersions" type="button" class="btn">Show versions</button>
+        </div>
+      </form>
+      <div id="extractStatus" class="muted small" aria-live="polite" style="margin-top:6px;"></div>
+      <div id="extractPreview" class="preview" style="margin-top:6px;"></div>
+      <button id="useExtracted" class="btn primary hidden" style="margin-top:6px;">Use This Rubric</button>
+      <div id="versionsList" class="preview" style="margin-top:6px;"></div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="modal-backdrop"></div>
+</div>
+
+<style>
+  :root { --toolbar-h: 56px; } 
+
+  .modal { z-index: 1000; }
+  .modal .modal-dialog{
+    position: fixed;
+    top: calc(var(--toolbar-h) + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(900px, calc(100vw - 32px));
+    max-height: calc(100vh - var(--toolbar-h) - 24px);
+    display: flex;
+    flex-direction: column;
+  }
+  .modal .modal-header{ position: sticky; top: 0; z-index: 1; }
+
+  .modal .modal-body{ overflow: auto; flex: 1; }
+  #historyModal .history-list{ overflow: visible; max-height: none; }
+
+  #chat, #historyModal .modal-body { scroll-behavior: smooth; }
+</style>
+
+<script>
+  // Lightweight markdown renderer: headings, bold, unordered/ordered lists, paragraphs
+  function renderMarkdownLite(text) {
+    const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    let t = esc(text || '');
+    // Basic bold
+    t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    const lines = t.split(/\r?\n/);
+    let out = [];
+    let inUL = false, inOL = false;
+    const closeLists = () => {
+      if (inUL) { out.push('</ul>'); inUL = false; }
+      if (inOL) { out.push('</ol>'); inOL = false; }
+    };
+    for (let raw of lines) {
+      const line = raw;
+      // Headings using #, ##, ###
+      let m = line.match(/^\s*(#{1,3})\s+(.+)$/);
+      if (m) {
+        closeLists();
+        const level = m[1].length;
+        const tag = level === 1 ? 'h3' : level === 2 ? 'h4' : 'h5';
+        out.push(`<${tag}>${m[2]}</${tag}>`);
+        continue;
+      }
+      // Lines that are only <strong>...</strong> become headings for better scan
+      if (/^\s*<strong>.*<\/strong>\s*$/.test(line)) {
+        closeLists();
+        out.push(`<h4>${line.replace(/^\s*<strong>|<\/strong>\s*$/g, '')}</h4>`);
+        continue;
+      }
+      // Ordered list e.g., "1. Item"
+      if (/^\s*\d+\.\s+/.test(line)) {
+        if (!inOL) { closeLists(); out.push('<ol>'); inOL = true; }
+        out.push('<li>' + line.replace(/^\s*\d+\.\s+/, '') + '</li>');
+        continue;
+      }
+      // Unordered list
+      if (/^\s*-\s+/.test(line)) {
+        if (!inUL) { closeLists(); out.push('<ul>'); inUL = true; }
+        out.push('<li>' + line.replace(/^\s*-\s+/, '') + '</li>');
+        continue;
+      }
+      // Blank line
+      if (line.trim() === '') {
+        closeLists();
+        out.push('<br />');
+        continue;
+      }
+      // Paragraph
+      closeLists();
+      out.push('<p>' + line + '</p>');
+    }
+    closeLists();
+    return out.join('\n');
+  }
+
+  const chat = document.getElementById('chat');
+  const form = document.getElementById('composer');
+  const fileInput = document.getElementById('file');
+  const fileName = document.getElementById('fileName');
+  const dropOverlay = document.getElementById('dropOverlay');
+  const SHOW_SOURCE_EXCERPT = false; // disabled per request
+  function middleEllipsis(str, max = 30) {
+    if (!str) return '';
+    if (str.length <= max) return str;
+    const keep = Math.max(6, Math.floor((max - 3) / 2));
+    return str.slice(0, keep) + '...' + str.slice(-keep);
+  }
+  const messageInput = document.getElementById('message');
+  const sendBtn = document.getElementById('send');
+  const openHistory = document.getElementById('openHistory');
+  const historyModal = document.getElementById('historyModal');
+  const closeHistory = document.getElementById('closeHistory');
+  const openRubricTools = document.getElementById('openRubricTools');
+  const rubricToolsModal = document.getElementById('rubricToolsModal');
+  const closeRubricTools = document.getElementById('closeRubricTools');
+  const toggleRubricPanel = document.getElementById('toggleRubricPanel');
+  const rubricPanel = document.getElementById('rubricPanel');
+  const copyBtn = document.getElementById('copyFeedback');
+  const exportBtn = document.getElementById('exportPdf');
+  // Right panel controls
+  const rubricList = document.getElementById('rubricList');
+  const rubricSearch = document.getElementById('rubricSearch');
+  const expandAll = document.getElementById('expandAll');
+  const collapseAll = document.getElementById('collapseAll');
+  const extractForm = document.getElementById('extractForm');
+  const extractBtn = document.getElementById('extractBtn');
+  const extractStatus = document.getElementById('extractStatus');
+  const extractPreview = document.getElementById('extractPreview');
+  const useExtracted = document.getElementById('useExtracted');
+  const syllabusFile = document.getElementById('syllabusFile');
+  const syllabusFileName = document.getElementById('syllabusFileName');
+  const versionsList = document.getElementById('versionsList');
+  const loadVersions = document.getElementById('loadVersions');
+  // History panel controls
+  const historyList = document.getElementById('historyList');
+  const refreshHistory = document.getElementById('refreshHistory');
+
+  // State for export/copy
+  let lastInteractionId = null;
+  let lastFeedbackText = '';
+  let lastPromptExcerpt = '';
+  let lastEvidenceQuotes = [];
+  let lastScores = {};
+
+  function updateRubricScores(scores) {
+    if (!scores || !rubricList) return;
+    // Update total score summary (top of the rubric panel)
+    try {
+      let earned = 0, total = 0;
+      for (const [name, st] of Object.entries(scores)) {
+        const s = Number((st && st.score) || 0);
+        const t = Number((st && st.total) || 0);
+        if (!isNaN(s)) earned += s;
+        if (!isNaN(t)) total += t;
+      }
+      const txtEl = document.getElementById('rubricTotalText');
+      const barEl = document.getElementById('rubricTotalBar');
+      if (txtEl) txtEl.textContent = `${earned.toFixed(1)}/${total.toFixed(1)}`;
+      if (barEl) {
+        const pct = total > 0 ? Math.max(0, Math.min(1, earned / total)) : 0;
+        barEl.style.width = `${Math.round(pct * 100)}%`;
+        // Discrete colors: <60% red, 60-80% yellow, >=80% green
+        let color = 'hsl(0 80% 55%)';
+        if (pct >= 0.8) color = 'hsl(140 70% 40%)';
+        else if (pct >= 0.6) color = 'hsl(45 90% 50%)';
+        barEl.style.background = color;
+      }
+    } catch {}
+
+    const items = rubricList.querySelectorAll('.accordion-item');
+    items.forEach((li) => {
+      const summary = li.querySelector('summary');
+      if (!summary) return;
+      const name = summary.childNodes[0] ? String(summary.childNodes[0].textContent || '').trim() : String(summary.textContent || '').trim();
+      const s = scores[name];
+      summary.querySelectorAll('.badge').forEach((b) => b.remove());
+      if (s && typeof s.score !== 'undefined' && typeof s.total !== 'undefined') {
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.textContent = `${Number(s.score || 0).toFixed(1)}/${Number(s.total || 0).toFixed(1)}`;
+        summary.appendChild(badge);
+      }
+      const ul = li.querySelector('.criteria');
+      if (ul) {
+        ul.querySelectorAll('li').forEach((cli) => cli.classList.remove('selected'));
+        if (s && typeof s.score !== 'undefined') {
+          const pts = Number(s.score || 0);
+          let nearestLi = null, diff = Infinity;
+          ul.querySelectorAll('li').forEach((cli) => {
+            const pill = cli.querySelector('.pill');
+            const p = Number(pill ? pill.getAttribute('data-pts') : NaN);
+            if (!isNaN(p)) {
+              const d = Math.abs(p - pts);
+              if (d < diff) { diff = d; nearestLi = cli; }
+            }
+          });
+          if (nearestLi) nearestLi.classList.add('selected');
+        }
+      }
+    });
+  }
+
+  // File input: show chosen name and auto-send when no message is typed
+  if (fileInput && fileName) {
+    fileInput.addEventListener('change', () => {
+      const fn = (fileInput.files && fileInput.files[0]) ? fileInput.files[0].name : 'No file chosen';
+      fileName.textContent = fn;
+      if (fileInput.files && fileInput.files[0] && !messageInput.value.trim()) {
+        if (form.requestSubmit) form.requestSubmit();
+        else form.dispatchEvent(new Event('submit', { cancelable: true }));
+      }
+    });
+  }
+
+  // Keyboard shortcut: Ctrl+Enter to send
+  if (messageInput && form) {
+    messageInput.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey) && (e.key === 'Enter')) {
+        e.preventDefault();
+        if (form.requestSubmit) form.requestSubmit();
+        else form.dispatchEvent(new Event('submit', { cancelable: true }));
+      }
+    });
+  }
+
+  // Drag & drop anywhere to upload
+  let dragDepth = 0;
+  function showDrop(show) {
+    if (!dropOverlay) return;
+    if (show) {
+      dropOverlay.classList.remove('hidden');
+      dropOverlay.setAttribute('aria-hidden', 'false');
+    } else {
+      dropOverlay.classList.add('hidden');
+      dropOverlay.setAttribute('aria-hidden', 'true');
+    }
+  }
+  function looksLikeFileDrag(e) {
+    const dt = e.dataTransfer;
+    if (!dt) return false;
+    if (dt.types) return Array.prototype.some.call(dt.types, t => t === 'Files');
+    return true;
+  }
+  window.addEventListener('dragenter', (e) => {
+    if (!looksLikeFileDrag(e)) return;
+    e.preventDefault();
+    dragDepth += 1;
+    showDrop(true);
+  });
+  window.addEventListener('dragover', (e) => {
+    if (!looksLikeFileDrag(e)) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  });
+  window.addEventListener('dragleave', (e) => {
+    if (!looksLikeFileDrag(e)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) showDrop(false);
+  });
+  window.addEventListener('drop', (e) => {
+    if (!looksLikeFileDrag(e)) return;
+    e.preventDefault();
+    dragDepth = 0;
+    showDrop(false);
+    const files = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : null;
+    if (!files || !files.length) return;
+    const f = files[0];
+    try {
+      const dt = new DataTransfer();
+      dt.items.add(f);
+      fileInput.files = dt.files;
+    } catch (err) {
+      // Fallback: cannot programmatically set files; bail
+    }
+    if (fileName) fileName.textContent = middleEllipsis(f.name, 30);
+    if (form && !messageInput.value.trim()) {
+      if (form.requestSubmit) form.requestSubmit();
+      else form.dispatchEvent(new Event('submit', { cancelable: true }));
+    }
+  });
+
+  function scrollToBottom(target = '#chat', smooth = true) {
+    const el = (typeof target === 'string') ? document.querySelector(target) : target;
+    if (!el) return;
+    const run = () => {
+      el.scrollTop = el.scrollHeight;
+      try {
+        const last = el.lastElementChild;
+        if (last) last.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
+      } catch {}
+    };
+    requestAnimationFrame(run);
+    setTimeout(run, 0);
+    setTimeout(run, 80);
+  }
+
+  // Create a right-aligned user message bubble (with optional file chip)
+  function makeUserBubble(text, fileName) {
+    const el = document.createElement('div');
+    el.className = 'msg user';
+    const safeText = text ? String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
+    const chip = fileName ? `<div class="file-chip" title="${fileName}">${middleEllipsis(fileName, 28)}</div>` : '';
+    el.innerHTML = `
+      <div class="avatar">U</div>
+      <div class="bubble">${chip}${safeText ? `<div class="md">${safeText}</div>` : ''}</div>
+    `;
+    chat.appendChild(el);
+    scrollToBottom();
+    return el;
+  }
+  window.makeUserBubble = makeUserBubble;
+
+  function makeBotTyping() {
+    const el = document.createElement('div');
+    el.className = 'msg bot';
+    el.innerHTML = `
+      <div class="avatar">A</div>
+      <div class="bubble"><div class="typing"><span></span><span></span><span></span></div> Generating feedback...</div>
+    `;
+    chat.appendChild(el);
+    scrollToBottom();
+    return el;
+  }
+  window.makeBotTyping = makeBotTyping; 
+
+  function replaceBotBubble(el, html) {
+    const bubble = el.querySelector('.bubble');
+    if (bubble) bubble.innerHTML = `<div class="md">${html}</div>`;
+    scrollToBottom();  
+  
+  }
+  window.replaceBotBubble = replaceBotBubble; 
+
+
+  function highlightQuotesInText(text, quotes) {
+    let escaped = (text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    for (const q of (quotes || [])) {
+      if (!q) continue;
+      const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(safe, 'ig');
+      escaped = escaped.replace(re, (m) => `<mark>${m}</mark>`);
+    }
+    return escaped;
+  }
+
+  function showSourceBubble(promptExcerpt, quotes) {
+    if (!promptExcerpt) return;
+    const el = document.createElement('div');
+    el.className = 'msg user';
+    const html = highlightQuotesInText(promptExcerpt, quotes);
+    el.innerHTML = `
+      <div class="avatar">U</div>
+      <div class="bubble"><div class="md"><strong>Source excerpt</strong><br/>${html}</div></div>
+    `;
+    chat.appendChild(el);
+    scrollToBottom();  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const hasText = messageInput.value.trim().length > 0;
+    const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+    if (!hasText && !file) {
+      // Simple toast via flash area replacement
+      alert('Please paste text or upload a file.');
+      return;
+    }
+
+    // Show user bubble
+    const previewText = hasText ? (messageInput.value.trim().slice(0, 400) + (messageInput.value.trim().length > 400 ? '...' : '')) : '';
+    makeUserBubble(previewText, file ? file.name : '');
+
+    // Show typing indicator
+    sendBtn.disabled = true;
+    const botNode = makeBotTyping();
+
+    try {
+      const fd = new FormData();
+      if (hasText) fd.append('message', messageInput.value);
+      if (file) fd.append('file', file);
+
+      const resp = await fetch('/get_feedback', { method: 'POST', body: fd });
+      const data = await resp.json();
+      if (!resp.ok || !data.success) throw new Error(data.error || 'Failed to generate feedback');
+      const html = renderMarkdownLite(data.feedback || '');
+      replaceBotBubble(botNode, html);
+      lastInteractionId = data.interaction_id || null;
+      lastFeedbackText = data.feedback || '';
+      lastPromptExcerpt = data.prompt_excerpt || '';
+      lastEvidenceQuotes = data.evidence_quotes || [];     
+      lastScores = data.scores || {};     
+      updateRubricScores(lastScores);     
+      setTimeout(scrollToBottom, 50);
+      if (SHOW_SOURCE_EXCERPT && lastPromptExcerpt) {
+        showSourceBubble(lastPromptExcerpt, lastEvidenceQuotes);
+      }
+    } catch (err) {
+      replaceBotBubble(botNode, `<strong>Error</strong>: ${String(err.message || err)}`);
+    } finally {
+      sendBtn.disabled = false;
+      messageInput.value = '';
+      fileInput.value = '';
+    }
+  });
+
+  // Copy feedback
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      try {
+        if (!lastFeedbackText) throw new Error('No feedback to copy yet.');
+        await navigator.clipboard.writeText(lastFeedbackText);
+        alert('Feedback copied to clipboard.');
+      } catch (err) {
+        alert('Copy failed: ' + (err.message || String(err)));
+      }
+    });
+  }
+
+  // Export PDF
+  if (exportBtn) {
+    exportBtn.addEventListener('click', () => {
+      if (!lastInteractionId) { alert('No feedback to export yet.'); return; }
+      window.open(`/export_pdf?interaction_id=${lastInteractionId}`, '_blank');
+    });
+  }
+
+  // Rubric search filter
+  if (rubricSearch) {
+    rubricSearch.addEventListener('input', () => {
+      const q = rubricSearch.value.trim().toLowerCase();
+      const items = rubricList.querySelectorAll('.accordion-item');
+      items.forEach(it => {
+        const name = it.getAttribute('data-name') || '';
+        it.style.display = name.includes(q) ? '' : 'none';
+      });
+    });
+  }
+
+  // Expand / Collapse all
+  function setAllDetails(open) {
+    rubricList.querySelectorAll('details').forEach(d => { d.open = open; });
+  }
+  if (expandAll) expandAll.addEventListener('click', () => setAllDetails(true));
+  if (collapseAll) collapseAll.addEventListener('click', () => setAllDetails(false));
+
+  // Extract rubric from syllabus (admin only)
+  let extractedRubric = null;
+  if (extractForm) {
+    if (syllabusFile && syllabusFileName) {
+      syllabusFile.addEventListener('change', () => {
+        const fn = (syllabusFile.files && syllabusFile.files[0]) ? syllabusFile.files[0].name : 'No file selected';
+        syllabusFileName.textContent = middleEllipsis(fn, 34);
+      });
+    }
+    extractForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const file = document.getElementById('syllabusFile').files[0];
+      if (!file) { alert('Please choose a file.'); return; }
+      extractBtn.disabled = true;
+      extractStatus.textContent = 'Extracting rubric...';
+      extractPreview.textContent = '';
+      useExtracted.classList.add('hidden');
+      try {
+        const fd = new FormData(extractForm);
+        const resp = await fetch('/rubric/extract', { method: 'POST', body: fd });
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.error || 'Extraction failed');
+        extractedRubric = data.rubric || [];
+        extractStatus.textContent = 'Extraction complete. Review preview below.';
+        extractPreview.textContent = JSON.stringify(extractedRubric, null, 2);
+        useExtracted.classList.remove('hidden');
+      } catch (err) {
+        extractStatus.textContent = 'Error: ' + (err.message || String(err));
+      } finally {
+        extractBtn.disabled = false;
+      }
+    });
+
+    useExtracted.addEventListener('click', async () => {
+      if (!extractedRubric) return;
+      try {
+        const resp = await fetch('/save_WRITING_RUBRICs', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(extractedRubric)
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Save failed');
+        alert('Rubric saved. Reloading page...');
+        location.reload();
+      } catch (err) {
+        alert('Error saving rubric: ' + (err.message || String(err)));
+      }
+    });
+  }
+
+  // Load rubric versions (admin)
+  if (loadVersions && versionsList) {
+    loadVersions.addEventListener('click', async () => {
+      try {
+        versionsList.textContent = 'Loading versions...';
+        const r = await fetch('/rubric/versions');
+        const d = await r.json();
+        if (!d.success) throw new Error('Failed');
+        const vs = d.versions || [];
+        versionsList.innerHTML = vs.map(v => `#${v.id} - ${String(v.created_at).replace('T',' ').slice(0,16)} <button data-id="${v.id}" class="btn">Restore</button>`).join('\n');
+        versionsList.querySelectorAll('button[data-id]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const vid = btn.getAttribute('data-id');
+            if (!confirm('Restore this version as current rubric?')) return;
+            const resp = await fetch('/rubric/rollback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version_id: Number(vid) }) });
+            const data = await resp.json();
+            if (!resp.ok || !data.success) throw new Error(data.error || 'Rollback failed');
+            alert('Rubric restored. Reloading page...');
+            location.reload();
+          });
+        });
+      } catch (err) {
+        versionsList.textContent = 'Failed to load versions.';
+      }
+    });
+  }
+
+  // History rendering
+  async function loadHistory() {
+    try {
+      if (!historyList) return;
+      historyList.textContent = 'Loading...';
+      const resp = await fetch('/history');
+      const data = await resp.json();
+      if (!data.success) throw new Error('Failed');
+      const items = data.items || [];
+      historyList.innerHTML = '';
+      for (const it of items) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'history-row';
+        row.innerHTML = `
+          <div class="t">${(it.feedback_time || '').replace('T',' ').slice(0,16)}</div>
+          <div class="x">${(it.feedback_excerpt || '').replace(/</g,'&lt;')}</div>
+        `;
+        row.addEventListener('click', async () => {
+          try {
+            const r = await fetch(`/history/${it.id}`);
+            const d = await r.json();
+            if (!d.success) throw new Error('load failed');
+            makeUserBubble((d.prompt_text || '').slice(0, 400), '');
+            const node = makeBotTyping();
+            replaceBotBubble(node, renderMarkdownLite(d.feedback_text || ''));
+            lastInteractionId = d.id;
+            lastFeedbackText = d.feedback_text || '';
+            lastPromptExcerpt = (d.prompt_text || '').slice(0, 4000);
+            lastEvidenceQuotes = [];
+            lastScores = d.scores || {};
+            updateRubricScores(lastScores);
+            if (SHOW_SOURCE_EXCERPT && lastPromptExcerpt) showSourceBubble(lastPromptExcerpt, lastEvidenceQuotes);
+          } catch (err) {
+            alert('Failed to load history: ' + (err.message || String(err)));
+          }
+        });
+        historyList.appendChild(row);
+      }
+      scrollToBottom('#historyModal .modal-body', false);
+    } catch (err) {
+      if (historyList) historyList.textContent = 'Failed to load history.';
+    }
+  }
+  if (historyList) loadHistory();
+  if (refreshHistory) refreshHistory.addEventListener('click', loadHistory);
+
+  // Modal helpers
+  function showModal(modEl, show) {
+    if (!modEl) return;
+    if (show) {
+      modEl.classList.remove('hidden');
+      modEl.setAttribute('aria-hidden', 'false');
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      modEl.classList.add('hidden');
+      modEl.setAttribute('aria-hidden', 'true');
+      document.documentElement.style.overflow = ''; 
+    }
+  }
+  if (openHistory) openHistory.addEventListener('click', () => {
+    showModal(historyModal, true);
+    setTimeout(() => {
+      const mb = document.querySelector('#historyModal .modal-body');
+      if (mb) {
+        mb.scrollTop = mb.scrollHeight;
+        try { mb.lastElementChild?.scrollIntoView({ behavior: 'auto', block: 'end' }); } catch {}
+      }
+    }, 0);
+  });
+  if (closeHistory) closeHistory.addEventListener('click', () => showModal(historyModal, false));
+  if (openRubricTools) openRubricTools.addEventListener('click', () => showModal(rubricToolsModal, true));
+  if (closeRubricTools) closeRubricTools.addEventListener('click', () => showModal(rubricToolsModal, false));
+  if (toggleRubricPanel) toggleRubricPanel.addEventListener('click', () => {
+    rubricPanel.classList.toggle('open');
+  });
+  // Click backdrop to close
+  document.querySelectorAll('.modal').forEach(m => {
+    m.addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-backdrop')) showModal(m, false);
+    });
+  });
+
+
+
+</script>
+{% endblock %}

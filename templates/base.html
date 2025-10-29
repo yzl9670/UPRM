@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chem PR Technical Report Feedback</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">Chem PR Technical Report Feedback</div>
+      <nav class="nav">
+        {% if current_user %}
+        <span class="welcome">Signed in as {{ current_user.username }}</span>
+        <a class="link" href="/logout">Logout</a>
+        {% endif %}
+      </nav>
+    </header>
+    <main class="app-main">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="flashes">
+        {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+  </html>

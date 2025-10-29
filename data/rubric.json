@@ -1,0 +1,90 @@
+[
+  {
+    "name": "Formatting & Document Design",
+    "scoringCriteria": [
+      { "points": 5, "description": "Fully compliant (length, spacing, margins, font, language, appendices used appropriately)." },
+      { "points": 4, "description": "Minor deviations that do not affect readability or requirements." },
+      { "points": 3, "description": "Some issues (e.g., margins/length/spacing) that mildly hinder readability." },
+      { "points": 2, "description": "Multiple formatting problems that reduce clarity or break requirements." },
+      { "points": 1, "description": "Major non-compliance; formatting frequently obstructs reading." },
+      { "points": 0, "description": "Not compliant with required format." }
+    ]
+  },
+  {
+    "name": "Structure and Organization",
+    "scoringCriteria": [
+      { "points": 5, "description": "All required sections present; logical flow; headings and ordering support understanding." },
+      { "points": 4, "description": "All major sections present; minor ordering or flow issues." },
+      { "points": 3, "description": "One required section weak or missing; noticeable flow issues." },
+      { "points": 2, "description": "Multiple sections weak or missing; organization hinders comprehension." },
+      { "points": 1, "description": "Poorly organized; most sections weak/missing." },
+      { "points": 0, "description": "Required structure largely absent." }
+    ]
+  },
+  {
+    "name": "Introduction and Scope",
+    "scoringCriteria": [
+      { "points": 5, "description": "Clear background and relevance; problem, objectives, and scope are explicit and coherent." },
+      { "points": 4, "description": "Mostly clear; minor gaps in objectives or scope." },
+      { "points": 3, "description": "Purpose stated but lacks clarity or complete scope." },
+      { "points": 2, "description": "Unclear motivation or objectives; scope ambiguous." },
+      { "points": 1, "description": "Missing key elements; hard to infer intent or scope." },
+      { "points": 0, "description": "No meaningful introduction or scope." }
+    ]
+  },
+  {
+    "name": "Background",
+    "scoringCriteria": [
+      { "points": 5, "description": "Sufficient theoretical context with accurate sources; assumptions/gaps explicitly stated." },
+      { "points": 4, "description": "Adequate theory and sources; small gaps or minor inaccuracies." },
+      { "points": 3, "description": "Some context provided; limited depth or incomplete citations." },
+      { "points": 2, "description": "Superficial background; weak or unclear grounding." },
+      { "points": 1, "description": "Minimal or inaccurate context; assumptions not stated." },
+      { "points": 0, "description": "No relevant background provided." }
+    ]
+  },
+  {
+    "name": "Methodology and Assumptions",
+    "scoringCriteria": [
+      { "points": 5, "description": "Models/equations, assumptions, tools, and approach described in replicable detail." },
+      { "points": 4, "description": "Mostly complete methodology; minor omissions." },
+      { "points": 3, "description": "Key steps present but lacks clarity or some assumptions/tools." },
+      { "points": 2, "description": "Incomplete or unclear methodology; assumptions not justified." },
+      { "points": 1, "description": "Methodology largely missing; cannot infer approach." },
+      { "points": 0, "description": "No methodology provided." }
+    ]
+  },
+  {
+    "name": "Results",
+    "scoringCriteria": [
+      { "points": 5, "description": "Complete, clear results with appropriate figures/tables/charts highlighting key outcomes." },
+      { "points": 4, "description": "Clear presentation; minor issues with visuals or completeness." },
+      { "points": 3, "description": "Results partially clear; some missing visuals or context." },
+      { "points": 2, "description": "Important results unclear; visuals poorly used or missing." },
+      { "points": 1, "description": "Sparse or confusing results." },
+      { "points": 0, "description": "No meaningful results presented." }
+    ]
+  },
+  {
+    "name": "Discussion and Critical Analysis",
+    "scoringCriteria": [
+      { "points": 5, "description": "Interprets results, compares to theory/literature, explains discrepancies, and notes limitations." },
+      { "points": 4, "description": "Sound interpretation; minor gaps in comparison or limitations." },
+      { "points": 3, "description": "Basic interpretation; limited comparison or discussion of limits." },
+      { "points": 2, "description": "Superficial analysis; little connection to theory/literature." },
+      { "points": 1, "description": "Minimal analysis; unsupported claims." },
+      { "points": 0, "description": "No discussion or analysis." }
+    ]
+  },
+  {
+    "name": "Conclusions",
+    "scoringCriteria": [
+      { "points": 5, "description": "Summarizes main findings; directly addresses objectives; states significance and practical implications." },
+      { "points": 4, "description": "Clear conclusions with minor gaps in implications or linkage to objectives." },
+      { "points": 3, "description": "Conclusions present but partly generic or not fully tied to objectives." },
+      { "points": 2, "description": "Weak conclusions; limited connection to results or objectives." },
+      { "points": 1, "description": "Conclusions unclear or largely restate results without insight." },
+      { "points": 0, "description": "No substantive conclusions." }
+    ]
+  }
+]

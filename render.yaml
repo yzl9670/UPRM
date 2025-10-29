@@ -1,0 +1,24 @@
+databases:
+  - name: tech-report-db
+    databaseName: tech_report
+    user: tech_report_user
+
+services:
+  - type: web
+    name: tech-report-app
+    env: python
+    rootDir: chem-pr-tech-report
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tech-report-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      # Optional: provide this in Render dashboard to enable LLM scoring
+      # - key: OPENAI_API_KEY
+      #   value: your_api_key

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="auth">
+  <h2 class="brand">Welcome back</h2>
+  <p class="muted" style="margin-top:4px;margin-bottom:14px;">Sign in to continue</p>
+
+  <form method="post">
+    <label>
+      Username
+      <input type="text" name="username" autocomplete="username" required />
+    </label>
+    <label>
+      Password
+      <input type="password" name="password" autocomplete="current-password" required />
+    </label>
+    <button type="submit" class="btn primary" style="width:100%;margin-top:10px;">
+      <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+      Login
+    </button>
+  </form>
+
+  <p class="muted small" style="margin-top:14px;">No account?
+    <a class="link" href="/register">Create one</a>
+  </p>
+</section>
+{% endblock %}

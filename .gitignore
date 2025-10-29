@@ -1,0 +1,23 @@
+# env & keys
+.env
+.env.*
+*.pem
+*.p12
+*.pfx
+*.key
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+# Node / Frontend
+node_modules/
+dist/
+build/
+.cache/
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
