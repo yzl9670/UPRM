@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import os
@@ -17,7 +17,7 @@ from rubric_extract import extract_rubric_from_text
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-RUBRIC_PATH = DATA_DIR / "rubric.json"
+RUBRIC_PATH = DATA_DIR / "rubric_master.json"
 
 
 def _load_json(path: Path, default: Any) -> Any:
@@ -607,5 +607,3 @@ app = create_app()
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
-
-

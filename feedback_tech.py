@@ -6,10 +6,12 @@ from typing import Any, Dict, List, Tuple
 
 
 def _max_points_for_item(item: Dict[str, Any]) -> float:
-    mx = 0.0
-    # allow either explicit max_points or scoringCriteria array of {points}
     if isinstance(item.get("max_points"), (int, float)):
-        return float(item.get("max_points"))
+        try:
+            return float(item.get("max_points"))
+        except Exception:
+            return 0.0
+    mx = 0.0
     sc = item.get("scoringCriteria")
     if isinstance(sc, list):
         for entry in sc:
@@ -37,7 +39,7 @@ def generate_feedback(
     text = (message or "").strip()
     if not text:
         return (
-            "No report content provided. Please paste the technical report text or upload a file.",
+            "No report content provided. Paste your final report text or upload a file.",
             _build_scores_skeleton(rubric),
             "No content to evaluate.",
             []
@@ -46,50 +48,90 @@ def generate_feedback(
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
     if not api_key:
         feedback_text = (
-            "**Technical Report Feedback (offline mode)**\n"
+            "**Final Report Feedback (offline mode)**\n"
             "- LLM disabled (no OPENAI_API_KEY). Returning structure-only scores.\n\n"
-            "Focus areas:\n"
-            "- Ensure Puerto Rico-specific constraints are addressed (infrastructure, regulations, climate).\n"
-            "- Add units, flowrates, and assumptions; cite credible sources.\n"
-            "- Provide economic assumptions and a brief sensitivity check.\n"
+            "Master rubric emphasis:\n"
+            "- Apply gates: missing PFD/streams/NPW/IRR/P&ID/HAZOP/DCF caps scores.\n"
+            "- Check one-to-one PFD↔simulation numbering.\n"
+            "- Respect page limits; >10% over caps at Proficient.\n"
         )
         return feedback_text, _build_scores_skeleton(rubric), "Model offline; no rubric scoring.", []
 
+    # Global rules and section details (compressed to fit prompt)
+    global_rules = [
+        "Bands: Exemplary/Proficient/Developing/Insufficient.",
+        "Round decimals to nearest integer before band mapping.",
+        "Page limits: if >10% over, cap section at Proficient.",
+        "Numbering consistency: enforce one-to-one PFD↔simulation where required.",
+    ]
+
+    section_gates = {
+        "Justification (Intro & Baseline)": [
+            "Missing PFD or full stream table → cap 7",
+            "Missing one-to-one PFD↔simulation numbering → cap 7",
+        ],
+        "Summary (Improved Process & Results)": [
+            "Missing improved PFD or missing NPW/IRR → cap 5",
+            "Main equipment replaced without strong justification → cap 7",
+        ],
+        "6a) Designed Equipment": [
+            "No one-to-one PFD↔simulation mapping, or missing full process stream table, or missing capital-cost method → cap 12",
+            "Missing Aspen backups (base & improved) → cap 12",
+        ],
+        "6b) Safety, Health & Environment": [
+            "Missing P&ID or HAZOP → cap 4",
+        ],
+        "6c) Economic Analysis": [
+            "Missing DCF or NPW/IRR → cap 4",
+        ],
+    }
+
+    # Derive simple page limits for sections that state them explicitly
+    page_limits = {
+        "Executive Summary": 1,
+        "Justification (Intro & Baseline)": 6,
+        "Summary (Improved Process & Results)": 6,
+    }
 
     payload = {
-        "report_excerpt": text[:8000],
+        "report_excerpt": text[:16000],
         "rubrics": [{"name": r.get("name"), "max_points": _max_points_for_item(r)} for r in rubric],
+        "global_rules": global_rules,
+        "gates": section_gates,
+        "page_limits": page_limits,
         "instructions": [
-            "Score each rubric 0..max based on clarity, specificity, credibility, and structure.",
-            "Ground judgments strictly in the provided text; do not assume unstated facts.",
+            "For each rubric, compute a raw score 0..max based on the provided text and rubric intent.",
+            "Apply gates and page caps: final_score = min(rounded_raw, caps).",
+            "Rounding: round raw to nearest integer before capping.",
+            "If you cap, note which gate triggered in 'applied_caps'.",
+            "Ground judgments strictly in the provided text; include 0-2 short evidence quotes when helpful.",
             "Keep rationales <= 25 words; suggestions <= 16 words; be concrete.",
-            "Include 0-2 short evidence quotes when helpful.",
         ],
         "output_schema": {
             "writing": [
                 {
                     "name": "string",
-                    "score": "number (0..max for this rubric)",
-                    "total": "number (the rubric max)",
+                    "score": "integer (0..max after caps)",
+                    "total": "integer (the rubric max)",
                     "rationale": "string (<= 25 words)",
                     "suggestion": "string (<= 16 words)",
-                    "evidence_quotes": ["string (0-2 quotes)"]
+                    "evidence_quotes": ["string (0-2 quotes)"],
+                    "applied_caps": ["string (optional; gates or page caps applied)"]
                 }
             ],
             "overall": {
-                "notes": "string (<= 120 words; action-oriented revision plan with 2–4 concrete steps)"
+                "notes": "string (<= 120 words; 2–4 concrete actions to reach Exemplary in capped/weak areas)"
             }
         }
     }
-
 
     try:
         from openai import OpenAI
         client = OpenAI(api_key=api_key)
         sys_text = (
-            "You are a rigorous technical writing reviewer for chemical engineering. "
-            "Read holistically; judge based on evidence in the text; avoid keyword scoring. "
-            "Return ONLY a valid JSON object that matches the requested schema. Do not include any prose outside JSON."
+            "You are a rigorous grader for a final chemical engineering design report. "
+            "Enforce gates and caps, rounding rules, and page limits as specified. "
+            "Return ONLY a valid JSON object that matches the requested schema."
         )
         user_text = (
             "Return a JSON object that strictly matches the output_schema. "
@@ -107,7 +149,7 @@ def generate_feedback(
         content = resp.choices[0].message.content or "{}"
         data = json.loads(content)
     except Exception as e:
-        fb = f"**Technical Report Feedback (degraded)**\n- Error: {e}\nFalling back to structure-only scores.\n"
+        fb = f"**Final Report Feedback (degraded)**\n- Error: {e}\nFalling back to structure-only scores.\n"
         return fb, _build_scores_skeleton(rubric), "Model error; no scores.", []
 
     writing_rows = data.get("writing") or []
@@ -117,6 +159,7 @@ def generate_feedback(
 
     earned, max_total = 0.0, 0.0
     scores: Dict[str, Any] = {}
+    cap_notes: List[str] = []
 
     for w in writing_rows:
         try:
@@ -129,7 +172,7 @@ def generate_feedback(
 
             quotes = [q for q in (w.get("evidence_quotes") or []) if isinstance(q, str)]
             if strict_evidence and s > 0 and not quotes:
-                s *= 0.8
+                s *= 0.9  # slightly penalize missing evidence in master rubric
                 w["score"] = s
 
             earned += s
@@ -139,16 +182,24 @@ def generate_feedback(
                 q_clean = q.strip()
                 if q_clean and q_clean not in evidence_quotes:
                     evidence_quotes.append(q_clean)
+
+            caps = [c for c in (w.get("applied_caps") or []) if isinstance(c, str)]
+            for c in caps:
+                c2 = c.strip()
+                if c2:
+                    cap_notes.append(f"{name}: {c2}")
         except Exception:
             continue
 
-
-    lines: List[str] = ["**Technical Report Feedback**"]
+    # Build feedback text (master rubric flavor)
+    lines: List[str] = ["**Final Report Feedback**"]
     if max_total > 0:
-        lines.append(f"**Total Score**: {earned:.1f}/{max_total:.1f}")
+        lines.append(f"**Total Score**: {earned:.0f}/{max_total:.0f}")
+    if cap_notes:
+        lines += ["", "**Applied Caps/Gates**", *cap_notes[:8]]
     lines += ["", "**Overall Summary**"]
 
-    # ---------- Overall Summary ----------
+    # Overall summary and priorities
     weak: List[Tuple[str, float, float, str]] = []
     strong: List[Tuple[str, float, float]] = []
     for w in writing_rows:
@@ -169,13 +220,12 @@ def generate_feedback(
     top3 = weak[:3]
 
     summary_lines: List[str] = [
-        f"Your draft scores **{earned:.1f}/{max_total:.1f}**. "
-        "To make this grade-ready, tackle the items below **in order**."
+        f"Draft scores **{earned:.0f}/{max_total:.0f}**. To reach Exemplary, fix gated items first, then raise weakest sections.",
     ]
     if top3:
         steps = []
         for (n, s, t, sug) in top3:
-            action = (sug or f"Strengthen {n} with concrete data/figures").rstrip(".")
+            action = (sug or f"Strengthen {n} with quantitative evidence").rstrip(".")
             steps.append(f"{n}: {action}")
         summary_lines.append("**Revise in this order:** " + " → ".join(steps))
     missing = [n for (n, s, t, _) in weak if s == 0]
@@ -186,31 +236,7 @@ def generate_feedback(
 
     lines += ["\n".join(summary_lines), ""]
 
-    # ---------- Top Priorities + Per-Rubric Breakdown ----------
-    priorities = sorted(
-        (
-            (
-                (w.get("name") or "").strip(),
-                float(w.get("score") or 0.0),
-                float(w.get("total") or 0.0),
-                (w.get("suggestion") or "").strip(),
-            )
-            for w in writing_rows
-            if float(w.get("total") or 0.0) > 0.0
-        ),
-        key=lambda x: (x[1] / x[2]) if x[2] else 0.0
-    )
-    top = [p for p in priorities if p[2] > 0 and (p[1] / p[2]) < 0.8][:3]
-
-    body: List[str] = []
-    if top:
-        body.append("**Top Priorities (next steps)**")
-        for idx, (name, s, t, sug) in enumerate(top, start=1):
-            body.append(f"{idx}. {name}: {s:.1f}/{t:.1f} — {sug}")
-        body.append("")
-
-    body.append("**Per-Rubric Breakdown**")
-    
+    body: List[str] = ["**Per-Rubric Breakdown**"]
     for w in writing_rows:
         try:
             name = str(w.get("name") or "").strip()
@@ -218,27 +244,20 @@ def generate_feedback(
             t = float(w.get("total") or 0.0)
             rationale = str(w.get("rationale") or "").strip()
             sug = str(w.get("suggestion") or "").strip()
-            ratio = (s / t) if t else 0.0
+            quotes = [q for q in (w.get('evidence_quotes') or []) if isinstance(q, str)]
 
-            if ratio >= 0.8:
-
-                body.append(f" **{name}**: {s:.1f}/{t:.1f}")
-                continue
-
-            #  Why / Improve / Evidence
-            row = [f" **{name}**: {s:.1f}/{t:.1f}"]
+            row = [f" **{name}**: {s:.0f}/{t:.0f}"]
             if rationale:
                 row.append(f"  - **Why**: {rationale}")
             if sug and sug.lower() != "none":
                 row.append(f"  - **Improve**: {sug}")
-            quotes = [q for q in (w.get('evidence_quotes') or []) if isinstance(q, str)]
             if quotes:
                 row.append("  - **Evidence**: " + " | ".join(f"“{q.strip()}”" for q in quotes[:2]))
             body += row
         except Exception:
             continue
 
-
     final_text = "\n".join(lines + [""] + body).strip()
     summary = str((data.get("overall") or {}).get("notes") or "").strip() or ""
     return final_text, (scores or _build_scores_skeleton(rubric)), summary, evidence_quotes
+
