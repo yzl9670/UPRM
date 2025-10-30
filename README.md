@@ -14,7 +14,7 @@ Highlights
   - `GET /get_last_feedback` returns the latest feedback text for the current user
   - `POST /submit_feedback` stores user rating/comments for a feedback interaction
 - No LEED form or credit endpoints.
-- Rubric lives in `data/rubric.json` and can be edited directly or via the admin API.
+- Rubric lives in `data/rubric_master.json` and can be edited directly or via the admin API.
 - Render-ready DB via `DATABASE_URL` (PostgreSQL) and `render.yaml`.
 
 Quick Start (Local)
@@ -39,7 +39,7 @@ Login & Roles
 Rubric
 ------
 
-- File location: `data/rubric.json`
+- File location: `data/rubric_master.json`
 - Shape (example):
   [
     {"name": "Executive Summary", "scoringCriteria": [ {"points": 4, "description": "..."}, ... ]},
@@ -70,8 +70,7 @@ Files
 - `feedback_tech.py`: Feedback generation (LLM + fallback) focused on writing rubric only.
 - `models.py`: SQLAlchemy models.
 - `templates/`: Jinja templates for pages.
-- `data/rubric.json`: Active rubric definition.
+- `data/rubric_master.json`: Active rubric definition.
 - `render.yaml`: Render web service + managed DB.
 - `requirements.txt`: Python dependencies.
 - `Procfile`: Heroku/Render-compatible start command.
-

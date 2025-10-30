@@ -36,81 +36,114 @@ def _dump_json(path: Path, obj: Any) -> None:
 DEFAULT_TECH_RUBRIC = [
     {
         "name": "Executive Summary",
+        "max_points": 6,
         "scoringCriteria": [
-            {"points": 4, "description": "Clear problem, approach, key results, and recommendations."},
-            {"points": 3, "description": "Mostly clear; minor gaps in results or recommendations."},
-            {"points": 2, "description": "Important elements missing or unclear."},
-            {"points": 1, "description": "Confusing or lacks core content."},
-            {"points": 0, "description": "Absent or unusable."}
+            {"points": 6, "description": "Exemplary: Clear, concise; what, how, results, why; quantitative deltas; 1 page."},
+            {"points": 4, "description": "Proficient: One quantitative element thin or minor clarity issues."},
+            {"points": 2, "description": "Developing: Misses 1 required question/metric."},
+            {"points": 0, "description": "Insufficient: Over length or lacks core content."}
         ],
+        "notes": "Page limit: 1 page; >10% over caps at Proficient (4)."
     },
     {
-        "name": "Context: Puerto Rico",
+        "name": "Justification (Intro & Baseline)",
+        "max_points": 12,
         "scoringCriteria": [
-            {"points": 4, "description": "Explicitly addresses PR-specific constraints (infrastructure, climate, regulations)."},
-            {"points": 3, "description": "Mentions PR context with moderate specificity."},
-            {"points": 2, "description": "Superficial references to PR context."},
-            {"points": 1, "description": "Vague or generic context."},
-            {"points": 0, "description": "No PR context."}
+            {"points": 12, "description": "Exemplary: All required items complete with citations/justifications; accurate PFD & complete stream table; strong problem framing."},
+            {"points": 9, "description": "Proficient: Minor gaps (e.g., shallow demand forecast or limited sensitivity rationale)."},
+            {"points": 6, "description": "Developing: ~2 key items missing (e.g., no thermo basis or incomplete stream table)."},
+            {"points": 3, "description": "Insufficient: Major omissions (no PFD/streams or no problem statement)."}
         ],
+        "gates": [
+            "Missing PFD or full stream table, or missing one-to-one PFD↔simulation stream numbering → cap 7"
+        ],
+        "notes": "Page limit: 6 pages (stream table excluded)."
     },
     {
-        "name": "Process Description & Flows",
+        "name": "Summary (Improved Process & Results)",
+        "max_points": 9,
         "scoringCriteria": [
-            {"points": 5, "description": "Accurate process overview with flowrates, units, and assumptions."},
-            {"points": 4, "description": "Solid description; minor missing values or units."},
-            {"points": 3, "description": "Some process elements unclear or inconsistent."},
-            {"points": 2, "description": "Major gaps; unclear flows or units."},
-            {"points": 0, "description": "Not described."}
+            {"points": 9, "description": "Exemplary: Complete, quantitative contrast; rationale aligns with objectives."},
+            {"points": 7, "description": "Proficient: Mostly complete; one element thin (e.g., partial cost table)."},
+            {"points": 5, "description": "Developing: Multiple missing pieces (e.g., no NPW/IRR or incomplete improved PFD)."},
+            {"points": 2, "description": "Insufficient: Little evidence of improvement."}
         ],
+        "gates": [
+            "Missing improved PFD or missing NPW/IRR → cap 5",
+            "Main equipment replaced without strong justification → cap 7"
+        ],
+        "notes": "Page limit: 6 pages."
     },
     {
-        "name": "Safety & Environmental",
+        "name": "Conclusions",
+        "max_points": 3,
         "scoringCriteria": [
-            {"points": 4, "description": "Identifies hazards, mitigations, emissions, and compliance requirements."},
-            {"points": 3, "description": "Covers most safety/env factors; minor omissions."},
-            {"points": 2, "description": "Superficial; limited mitigations or compliance details."},
-            {"points": 1, "description": "Vague mention without specifics."},
-            {"points": 0, "description": "No discussion."}
-        ],
+            {"points": 3, "description": "Exemplary: Interprets results against objectives; clear go/no-go with rationale."},
+            {"points": 2, "description": "Proficient: Generally sound; minor gaps."},
+            {"points": 1, "description": "Developing: Re-summarizes; weak linkage to objectives."},
+            {"points": 0, "description": "Insufficient."}
+        ]
     },
     {
-        "name": "Economic Analysis",
+        "name": "Recommendations",
+        "max_points": 3,
         "scoringCriteria": [
-            {"points": 4, "description": "Uses reasonable CAPEX/OPEX, sensitivity, and assumptions."},
-            {"points": 3, "description": "Basic costs; limited sensitivity or assumptions."},
-            {"points": 2, "description": "Rough estimates; unclear basis."},
-            {"points": 1, "description": "Inconsistent or unsupported economics."},
-            {"points": 0, "description": "Absent."}
-        ],
+            {"points": 3, "description": "Exemplary: Technical/operational feasibility and economic optimum; avoids project-task items."},
+            {"points": 2, "description": "Proficient: Mostly focused; minor scope creep."},
+            {"points": 1, "description": "Developing: Vague or task-list oriented."},
+            {"points": 0, "description": "Insufficient."}
+        ]
     },
     {
-        "name": "Data, Methods, and Rigor",
+        "name": "6a) Designed Equipment",
+        "max_points": 18,
         "scoringCriteria": [
-            {"points": 5, "description": "Credible data cited; methods reproducible; units and references consistent."},
-            {"points": 4, "description": "Mostly credible/reproducible; few inconsistencies."},
-            {"points": 3, "description": "Some gaps in data sources or methods."},
-            {"points": 2, "description": "Sparse citations; unclear methods."},
-            {"points": 0, "description": "No sources or methods."}
+            {"points": 18, "description": "Exemplary: All tables/diagrams complete; numbering matches; costs/utilities/kinetics documented."},
+            {"points": 15, "description": "Proficient: Minor missing attributes or thin sensitivity justification."},
+            {"points": 10, "description": "Developing: Several missing tables/parameters or poor consistency."},
+            {"points": 6, "description": "Insufficient: Largely incomplete."}
         ],
+        "gates": [
+            "No one-to-one PFD↔simulation mapping, or missing full process stream table, or missing capital-cost method → cap 12",
+            "Missing Aspen backups (base & improved) → cap 12"
+        ]
     },
     {
-        "name": "Figures, Tables, and Formatting",
+        "name": "6b) Safety, Health & Environment",
+        "max_points": 9,
         "scoringCriteria": [
-            {"points": 3, "description": "Legible figures/tables with captions and references in text."},
-            {"points": 2, "description": "Mostly legible; inconsistent captions or references."},
-            {"points": 1, "description": "Cluttered or unlabeled visuals."},
-            {"points": 0, "description": "No usable visuals."}
+            {"points": 9, "description": "Exemplary: Hazards/risks/mitigations; P&ID with controls and justification; HAZOP (1 equipment); regs cited."},
+            {"points": 7, "description": "Proficient: Mostly complete; minor omissions."},
+            {"points": 5, "description": "Developing: Limited depth or missing elements."},
+            {"points": 2, "description": "Insufficient."}
         ],
+        "gates": [
+            "Missing P&ID or HAZOP → cap 4"
+        ]
     },
     {
-        "name": "Writing Quality",
+        "name": "6c) Economic Analysis",
+        "max_points": 9,
         "scoringCriteria": [
-            {"points": 3, "description": "Clear, concise, and well-organized with minimal errors."},
-            {"points": 2, "description": "Generally clear; some errors or structure issues."},
-            {"points": 1, "description": "Frequent errors; hard to follow."},
-            {"points": 0, "description": "Unclear or unreadable."}
+            {"points": 9, "description": "Exemplary: COL/CRM/CWT/CUT & COMd; cash flow and DCF; explicit assumptions; NPW & IRR; price sources."},
+            {"points": 7, "description": "Proficient: Mostly complete; minor gaps."},
+            {"points": 5, "description": "Developing: Missing depth or a key piece."},
+            {"points": 2, "description": "Insufficient."}
         ],
+        "gates": [
+            "Missing DCF or NPW/IRR → cap 4"
+        ]
+    },
+    {
+        "name": "Quality of the Written Work",
+        "max_points": 6,
+        "scoringCriteria": [
+            {"points": 6, "description": "Exemplary: Fully compliant; professional polish; citation and numbering rules followed."},
+            {"points": 4, "description": "Proficient: Minor inconsistencies."},
+            {"points": 2, "description": "Developing: Multiple format or clarity issues."},
+            {"points": 1, "description": "Insufficient: Non-compliant or hard to read."}
+        ],
+        "notes": "Formatting rules: Word; two-sided justification; 8.5×11; body 1.15; Arial 12 (titles 10); each major section new page; prelim pages Roman numerals; chapter-scoped numbering; in-text references ordered with matching bibliography."
     }
 ]
 
